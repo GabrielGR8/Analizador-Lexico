@@ -7,6 +7,8 @@ public class Scanner {
 
     private static final Map<String, TipoToken> palabrasReservadas;
 
+    private static final Map<String, TipoToken> caracteresReservados;
+
     static {
         palabrasReservadas = new HashMap<>();
         palabrasReservadas.put("and",    TipoToken.AND);
@@ -22,6 +24,24 @@ public class Scanner {
         palabrasReservadas.put("true",   TipoToken.TRUE);
         palabrasReservadas.put("var",    TipoToken.VAR);
         palabrasReservadas.put("while",  TipoToken.WHILE);
+
+        caracteresReservados = new HashMap<>();
+        caracteresReservados.put("<", TipoToken.LESS);
+        caracteresReservados.put(">", TipoToken.GREATER);
+        caracteresReservados.put("!", TipoToken.BANG);
+        caracteresReservados.put("=", TipoToken.EQUAL);
+        caracteresReservados.put("+", TipoToken.PLUS);
+        caracteresReservados.put("-", TipoToken.MINUS);
+        caracteresReservados.put("*", TipoToken.STAR);
+        caracteresReservados.put("/", TipoToken.SLASH);
+        caracteresReservados.put("{", TipoToken.LEFT_BRACE);
+        caracteresReservados.put("}", TipoToken.RIGHT_BRACE);
+        caracteresReservados.put("(", TipoToken.LEFT_PAREN);
+        caracteresReservados.put(")", TipoToken.RIGHT_PAREN);
+        caracteresReservados.put(",", TipoToken.COMMA);
+        caracteresReservados.put(".", TipoToken.DOT);
+        caracteresReservados.put(";", TipoToken.SEMICOLON);
+
     }
 
     private final String source;
