@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.math.BigDecimal;
+import java.text.DecimalFormat;
 
 public class Scanner {
 
@@ -97,6 +97,10 @@ public class Scanner {
                             Token t = new Token(tt, lexema);
                             tokens.add(t);
                         }
+                        else if(c!= ' ' && c!= '\n' && c!= '\t' && c!= '\r'){
+                            Interprete.error(0, "Se introdujo un caracter no valido: "+c);
+                            return null;
+                        }
                         lexema = "";
                     }
                     break;
@@ -120,7 +124,6 @@ public class Scanner {
                     break;
                 case 13:
                     if(Character.isLetterOrDigit(c)){
-                        estado = 13;
                         lexema += c;
                     }
                     else{
@@ -144,7 +147,6 @@ public class Scanner {
 
                 case 15:
                     if(Character.isDigit(c)){
-                        estado = 15;
                         lexema += c;
                     }
                     else if(c == '.'){
@@ -220,7 +222,9 @@ public class Scanner {
                         lexema += c;
                     }
                     else{
-                        Token t = new Token(TipoToken.NUMBER, lexema, new BigDecimal(lexema).longValue());
+                        DecimalFormat formateador = new DecimalFormat("####0.###############");
+                        double num = Double.parseDouble(lexema);
+                        Token t = new Token(TipoToken.NUMBER, lexema, formateador.format(num));
                         tokens.add(t);
                         estado = 0;
                         lexema = "";
@@ -235,7 +239,6 @@ public class Scanner {
                     else if(c != '"'){
                         lexema += c;
                         aux += c;
-                        estado = 24;
                     }
                     else{
                         lexema +=c;
@@ -283,7 +286,13 @@ public class Scanner {
 
         }
 
+        if(estado != 0){
+            Interprete.error(-1, "Hay un error en la ultima linea, no se puede terminar de identificar el lexema");
+            return null;
+        }
+        else{
+            return tokens;
+        }
 
-        return tokens;
     }
 }
