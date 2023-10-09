@@ -286,7 +286,7 @@ public class Scanner {
 
         }
 
-        if(estado != 0){
+        if(estado != 0 && estado != 27 && estado != 28 && estado != 30){
             Interprete.error(-1, "Hay un error en la ultima linea, no se puede terminar de identificar el lexema");
             return null;
         }
