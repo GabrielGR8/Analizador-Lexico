@@ -16,6 +16,13 @@ public class Token {
         this.literal = literal;
     }
 
+    public TipoToken getTipo(){
+        return  tipo;
+    }
+
+    public Object getLiteral(){ return literal;}
+    
+
     public String toString() {
         return "<" + tipo + " " + lexema + " " + literal + ">";
     }
