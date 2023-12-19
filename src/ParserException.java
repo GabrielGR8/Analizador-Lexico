@@ -4,9 +4,9 @@ public class ParserException extends Exception{
         System.out.println(m);
     }
 
-    public ParserException(Token tt){
+    public ParserException(Token tt, int estado){
         String message =
-                ". No se esperaba " + tt.getTipo();
+                ". No se esperaba " + tt.getTipo()+" en el estado: "+estado;
         System.out.println(message);
     }
 }

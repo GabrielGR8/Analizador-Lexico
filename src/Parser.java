@@ -1,4 +1,5 @@
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Parser {
@@ -7,6 +8,7 @@ public class Parser {
     private Token preanalisis;
 
     private boolean hayErrores = false;
+    List<Statement> programa;
     private Tabla tabla;
 
     // ...
@@ -35,622 +37,678 @@ public class Parser {
    private void program() throws ParserException {
         switch (tabla.BuscarEnTabla(0, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 0);
             case 1:
-                declaration();
+                programa = declaration();
                 break;
         }
    }
 
-    private void declaration() throws ParserException {
+    private List<Statement> declaration() throws ParserException {
+        List<Statement> stmts = new ArrayList<>();
         switch (tabla.BuscarEnTabla(1, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 1);
             case 1:
-                fun_decl();
-                declaration();
-                break;
+                stmts.add(fun_decl());
+                stmts.addAll(declaration());
+                return stmts;
             case 2:
-                var_decl();
-                declaration();
-                break;
+                stmts.add(var_decl());
+                stmts.addAll(declaration());
+                return stmts;
             case 3:
-                statement();
-                declaration();
-                break;
+                stmts.add(statement());
+                stmts.addAll(declaration());
+                return stmts;
             case 4:
                 break;
         }
+        return stmts;
     }
 
-    private void fun_decl() throws ParserException {
+    private Statement fun_decl() throws ParserException {
         switch (tabla.BuscarEnTabla(2, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 2);
             case 1:
                 match(TipoToken.FUN);
-                func();
-                break;
+                return func();
         }
+        return null;
     }
 
-    private void var_decl() throws ParserException {
+    private Statement var_decl() throws ParserException {
         switch (tabla.BuscarEnTabla(3, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 3);
             case 1:
                 match(TipoToken.VAR);
                 match(TipoToken.IDENTIFIER);
-                var_init();
+                Statement stmt = var_init(previous());
                 match(TipoToken.SEMICOLON);
-                break;
+                return stmt;
         }
+        return null;
     }
 
-    private void var_init() throws ParserException {
+    private Statement var_init(Token name) throws ParserException {
         switch (tabla.BuscarEnTabla(4, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 4);
             case 1:
                 match(TipoToken.EQUAL);
-                expression();
-                break;
+                Expression expr = expression();
+                return new StmtVar(name, expr);
             case 2:
                 break;
         }
+        return new StmtVar(name, null);
     }
 
-    private void statement() throws ParserException {
+    private Statement statement() throws ParserException {
         switch (tabla.BuscarEnTabla(5, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 5);
             case 1:
-                expr_stmt();
-                break;
+                return expr_stmt();
             case 2:
-                for_stmt();
-                break;
+                return for_stmt();
             case 3:
-                if_stmt();
-                break;
+                return if_stmt();
             case 4:
-                print_stmt();
-                break;
+                return print_stmt();
             case 5:
-                return_stmt();
-                break;
+                return return_stmt();
             case 6:
-                while_stmt();
-                break;
+                return while_stmt();
             case 7:
-                block();
-                break;
+                return block();
         }
+        return null;
     }
 
-    private void expr_stmt() throws ParserException {
+    private Statement expr_stmt() throws ParserException {
         switch (tabla.BuscarEnTabla(6, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 6);
             case 1:
-                expression();
+                Expression expr = expression();
                 match(TipoToken.SEMICOLON);
-                break;
+                return new StmtExpression(expr);
         }
+        return null;
     }
 
-    private void for_stmt() throws ParserException {
+    private Statement for_stmt() throws ParserException {
+        List<Statement> stmts = new ArrayList<>();
         switch (tabla.BuscarEnTabla(7, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 7);
             case 1:
                 match(TipoToken.FOR);
                 match(TipoToken.LEFT_PAREN);
-                for_stmt_1();
-                for_stmt_2();
-                for_stmt_3();
+                stmts.add(for_stmt_1());
+                Expression expr = for_stmt_2();
+                stmts.add(for_stmt_3());
                 match(TipoToken.RIGHT_PAREN);
-                statement();
-                break;
+                stmts.add(statement());
+                StmtBlock block = new StmtBlock(stmts);
+                return new StmtLoop(expr, block);
         }
+        return null;
     }
 
-    private void for_stmt_1() throws ParserException {
+    private Statement for_stmt_1() throws ParserException {
         switch (tabla.BuscarEnTabla(8, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 8);
             case 1:
-                var_decl();
-                break;
+                return var_decl();
             case 2:
-                expr_stmt();
-                break;
+                return expr_stmt();
             case 3:
                 match(TipoToken.SEMICOLON);
-                break;
+                return new StmtExpression(null);
         }
+        return null;
     }
 
-    private void for_stmt_2() throws ParserException {
+    private Expression for_stmt_2() throws ParserException {
         switch (tabla.BuscarEnTabla(9, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 9);
             case 1:
-                expression();
+                Expression expr = expression();
                 match(TipoToken.SEMICOLON);
-                break;
+                return expr;
             case 2:
                 match(TipoToken.SEMICOLON);
-                break;
+                return null;
         }
+        return null;
     }
 
-    private void for_stmt_3() throws ParserException {
+    private Statement for_stmt_3() throws ParserException {
         switch (tabla.BuscarEnTabla(10, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 10);
             case 1:
-                expression();
-                break;
+                return new StmtExpression(expression());
             case 2:
-                break;
+                return new StmtExpression(null);
         }
+        return null;
     }
 
-    private void if_stmt() throws ParserException {
+    private Statement if_stmt() throws ParserException {
         switch (tabla.BuscarEnTabla(11, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 11);
             case 1:
                 match(TipoToken.IF);
                 match(TipoToken.LEFT_PAREN);
-                expression();
+                Expression expr = expression();
                 match(TipoToken.RIGHT_PAREN);
-                statement();
-                else_stmt();
-                break;
+                Statement stmt1 = statement();
+                Statement stmt2 = else_stmt();
+                return new StmtIf(expr, stmt1, stmt2);
         }
+        return null;
     }
 
-    private void else_stmt() throws ParserException {
+    private Statement else_stmt() throws ParserException {
         switch (tabla.BuscarEnTabla(12, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 12);
             case 1:
                 match(TipoToken.ELSE);
-                statement();
-                break;
+                return statement();
             case 2:
                 break;
         }
+        return null;
     }
 
-    private void print_stmt() throws ParserException {
+    private Statement print_stmt() throws ParserException {
         switch (tabla.BuscarEnTabla(13, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 13);
             case 1:
                 match(TipoToken.PRINT);
-                expression();
+                StmtPrint stmt = new StmtPrint(expression());
                 match(TipoToken.SEMICOLON);
-                break;
+                return stmt;
         }
+        return null;
     }
 
-    private void return_stmt() throws ParserException {
+    private Statement return_stmt() throws ParserException {
         switch (tabla.BuscarEnTabla(14, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 14);
             case 1:
                 match(TipoToken.RETURN);
-                return_exp_opc();
+                Statement stmt = return_exp_opc();
                 match(TipoToken.SEMICOLON);
-                break;
+                return stmt;
         }
+        return null;
     }
 
-    private void return_exp_opc() throws ParserException {
+    private Statement return_exp_opc() throws ParserException {
         switch (tabla.BuscarEnTabla(15, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 15);
             case 1:
-                expression();
-                break;
+                return  new StmtReturn(expression());
             case 2:
                 break;
         }
+        return new StmtReturn(null);
     }
 
-    private void while_stmt() throws ParserException {
+    private Statement while_stmt() throws ParserException {
         switch (tabla.BuscarEnTabla(16, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 16);
             case 1:
                 match(TipoToken.WHILE);
                 match(TipoToken.LEFT_PAREN);
-                expression();
+                Expression expr = expression();
                 match(TipoToken.RIGHT_PAREN);
-                statement();
-                break;
+                Statement stmt = statement();
+                return new StmtLoop(expr, stmt);
         }
+        return null;
     }
 
-    private void block() throws ParserException {
+    private Statement block() throws ParserException {
         switch (tabla.BuscarEnTabla(17, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 17);
             case 1:
                 match(TipoToken.LEFT_BRACE);
-                declaration();
+                StmtBlock stmt = new StmtBlock(declaration());
                 match(TipoToken.RIGHT_BRACE);
-                break;
+                return stmt;
         }
+        return null;
     }
 
-    private void expression() throws ParserException {
+    private Expression expression() throws ParserException {
         switch (tabla.BuscarEnTabla(18, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 18);
             case 1:
-                assignment();
-                break;
+                return assignment();
         }
+        return null;
     }
 
-    private void assignment() throws ParserException {
+    private Expression assignment() throws ParserException {
         switch (tabla.BuscarEnTabla(19, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 19);
             case 1:
-                logic_or();
-                assignment_opc();
-                break;
+                Expression expr = logic_or();
+                expr = assignment_opc(expr);
+                return expr;
         }
+        return null;
     }
 
-    private void logic_or() throws ParserException {
+    private Expression logic_or() throws ParserException {
         switch (tabla.BuscarEnTabla(20, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 20);
             case 1:
-                logic_and();
-                logic_or_2();
-                break;
+                Expression expr = logic_and();
+                expr = logic_or_2(expr);
+                return expr;
         }
+        return null;
     }
 
-    private void logic_and() throws ParserException {
+    private Expression logic_and() throws ParserException {
         switch (tabla.BuscarEnTabla(21, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 21);
             case 1:
-                equality();
-                logic_and_2();
-                break;
+                Expression expr = equality();
+                expr = logic_and_2(expr);
+                return expr;
         }
+        return null;
     }
 
-    private void logic_or_2() throws ParserException {
+    private Expression logic_or_2(Expression expr) throws ParserException {
         switch (tabla.BuscarEnTabla(22, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 22);
             case 1:
                 match(TipoToken.OR);
-                logic_and();
-                logic_or_2();
-                break;
+                Token operador = previous();
+                Expression expr2 = logic_and();
+                ExprLogical expb = new ExprLogical(expr, operador, expr2);
+                return logic_or_2(expb);
             case 2:
                 break;
         }
+        return expr;
     }
 
-    private void assignment_opc() throws ParserException {
+    private Expression assignment_opc(Expression expr) throws ParserException {
         switch (tabla.BuscarEnTabla(23, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 23);
             case 1:
                 match(TipoToken.EQUAL);
-                expression();
-                break;
+                Token operador = previous();
+                Expression expr2 = expression();
+                return new ExprBinary(expr, operador, expr2);
             case 2:
                 break;
         }
+        return expr;
     }
 
-    private void logic_and_2() throws ParserException {
+    private Expression logic_and_2(Expression expr) throws ParserException {
         switch (tabla.BuscarEnTabla(24, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 24);
             case 1:
                 match(TipoToken.AND);
-                equality();
-                logic_and_2();
-                break;
+                Token operador = previous();
+                Expression expr2 = equality();
+                ExprLogical expb = new ExprLogical(expr, operador, expr2);
+                return logic_and_2(expb);
             case 2:
                 break;
         }
+        return expr;
     }
 
-    private void equality() throws ParserException {
+    private Expression equality() throws ParserException {
         switch (tabla.BuscarEnTabla(25, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 25);
             case 1:
-                comparison();
-                equality_2();
-                break;
+                Expression expr = comparison();
+                expr = equality_2(expr);
+                return expr;
         }
+        return null;
     }
 
-    private void equality_2() throws ParserException {
+    private Expression equality_2(Expression expr) throws ParserException {
         switch (tabla.BuscarEnTabla(26, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 26);
             case 1:
                 match(TipoToken.BANG_EQUAL);
-                comparison();
-                equality_2();
-                break;
+                Token operador = previous();
+                Expression expr2 = comparison();
+                ExprLogical expb = new ExprLogical(expr, operador, expr2);
+                return equality_2(expb);
             case 2:
                 match(TipoToken.EQUAL_EQUAL);
-                comparison();
-                equality_2();
-                break;
+                operador = previous();
+                expr2 = comparison();
+                expb = new ExprLogical(expr, operador, expr2);
+                return equality_2(expb);
             case 3:
                 break;
         }
+        return expr;
     }
 
-    private void comparison() throws ParserException {
+    private Expression comparison() throws ParserException {
         switch (tabla.BuscarEnTabla(27, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 27);
             case 1:
-                term();
-                comparison_2();
-                break;
+                Expression expr = term();
+                expr = comparison_2(expr);
+                return expr;
         }
+        return null;
     }
 
-    private void comparison_2() throws ParserException {
+    private Expression comparison_2(Expression expr) throws ParserException {
         switch (tabla.BuscarEnTabla(28, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 28);
             case 1:
                 match(TipoToken.GREATER);
-                term();
-                comparison_2();
-                break;
+                Token operador = previous();
+                Expression expr2 = term();
+                ExprLogical expb = new ExprLogical(expr, operador, expr2);
+                return comparison_2(expb);
             case 2:
                 match(TipoToken.GREATER_EQUAL);
-                term();
-                comparison_2();
-                break;
+                operador = previous();
+                expr2 = term();
+                expb = new ExprLogical(expr, operador, expr2);
+                return comparison_2(expb);
             case 3:
                 match(TipoToken.LESS);
-                term();
-                comparison_2();
-                break;
+                operador = previous();
+                expr2 = term();
+                expb = new ExprLogical(expr, operador, expr2);
+                return comparison_2(expb);
             case 4:
                 match(TipoToken.LESS_EQUAL);
-                term();
-                comparison_2();
-                break;
+                operador = previous();
+                expr2 = term();
+                expb = new ExprLogical(expr, operador, expr2);
+                return comparison_2(expb);
             case 5:
                 break;
         }
+        return expr;
     }
 
-    private void term() throws ParserException {
+    private Expression term() throws ParserException {
         switch (tabla.BuscarEnTabla(29, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 29);
             case 1:
-                factor();
-                term_2();
-                break;
+                Expression expr = factor();
+                expr = term_2(expr);
+                return expr;
         }
+        return null;
     }
 
-    private void term_2() throws ParserException {
+    private Expression term_2(Expression expr) throws ParserException {
         switch (tabla.BuscarEnTabla(30, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 30);
             case 1:
                 match(TipoToken.MINUS);
-                factor();
-                term_2();
-                break;
+                Token operador = previous();
+                Expression expr2 = factor();
+                ExprBinary expb = new ExprBinary(expr, operador, expr2);
+                return term_2(expb);
             case 2:
                 match(TipoToken.PLUS);
-                factor();
-                term_2();
-                break;
+                operador = previous();
+                expr2 = factor();
+                expb = new ExprBinary(expr, operador, expr2);
+                return term_2(expb);
             case 3:
                 break;
         }
+        return expr;
     }
 
-    private void factor() throws ParserException {
+    private Expression factor() throws ParserException {
         switch (tabla.BuscarEnTabla(31, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 31);
             case 1:
-                unary();
-                factor_2();
-                break;
+                Expression expr = unary();
+                expr = factor_2(expr);
+                return expr;
         }
+        return null;
     }
 
-    private void factor_2() throws ParserException {
+    private Expression factor_2(Expression expr) throws ParserException {
         switch (tabla.BuscarEnTabla(32, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 32);
             case 1:
                 match(TipoToken.SLASH);
-                unary();
-                factor_2();
-                break;
+                Token operador = previous();
+                Expression expr2 = unary();
+                ExprBinary expb = new ExprBinary(expr, operador, expr2);
+                return factor_2(expb);
             case 2:
                 match(TipoToken.STAR);
-                unary();
-                factor_2();
-                break;
+                operador = previous();
+                expr2 = unary();
+                expb = new ExprBinary(expr, operador, expr2);
+                return factor_2(expb);
             case 3:
                 break;
         }
+        return expr;
     }
 
-    private void unary() throws ParserException {
+    private Expression unary() throws ParserException {
         switch (tabla.BuscarEnTabla(33, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 33);
             case 1:
                 match(TipoToken.BANG);
-                unary();
-                break;
+                Token operador = previous();
+                Expression expr = unary();
+                return new ExprUnary(operador, expr);
             case 2:
                 match(TipoToken.MINUS);
-                unary();
-                break;
+                operador = previous();
+                expr = unary();
+                return new ExprUnary(operador, expr);
             case 3:
-                cal();
-                break;
+                return cal();
         }
+        return null;
     }
 
-    private void cal() throws ParserException {
+    private Expression cal() throws ParserException {
         switch (tabla.BuscarEnTabla(34, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 34);
             case 1:
-                primary();
-                cal_2();
-                break;
+                Expression expr = primary();
+                expr = cal_2(expr);
+                return expr;
         }
+        return null;
     }
 
-    private void cal_2() throws ParserException {
+    private Expression cal_2(Expression expr) throws ParserException {
         switch (tabla.BuscarEnTabla(35, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 35);
             case 1:
                 match(TipoToken.LEFT_PAREN);
-                arguments_opc();
+                List<Expression> lstArguments = arguments_opc();
                 match(TipoToken.RIGHT_PAREN);
-                cal_2();
-                break;
+                ExprCallFunction ecf = new ExprCallFunction(expr, lstArguments);
+                return cal_2(ecf);
             case 2:
                 break;
         }
+        return expr;
     }
 
-    private void primary() throws ParserException {
+    private Expression primary() throws ParserException {
         switch (tabla.BuscarEnTabla(36, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 36);
             case 1:
                 match(TipoToken.TRUE);
-                break;
+                return new ExprLiteral(true);
             case 2:
                 match(TipoToken.FALSE);
-                break;
+                return new ExprLiteral(false);
             case 3:
                 match(TipoToken.NULL);
-                break;
+                return new ExprLiteral(null);
             case 4:
                 match(TipoToken.NUMBER);
-                break;
+                Token numero = previous();
+                return new ExprLiteral(numero.getLiteral());
             case 5:
                 match(TipoToken.STRING);
-                break;
+                Token cadena = previous();
+                return new ExprLiteral(cadena.getLiteral());
             case 6:
                 match(TipoToken.IDENTIFIER);
-                break;
+                Token id = previous();
+                return new ExprVariable(id);
             case 7:
                 match(TipoToken.LEFT_PAREN);
-                expression();
+                Expression expr = expression();
                 match(TipoToken.RIGHT_PAREN);
-                break;
+                return new ExprGrouping(expr);
         }
+        return null;
     }
 
-    private void func() throws ParserException {
+    private Statement func() throws ParserException {
         switch (tabla.BuscarEnTabla(37, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 37);
             case 1:
                 match(TipoToken.IDENTIFIER);
+                Token name = previous();
                 match(TipoToken.LEFT_PAREN);
-                parameters_opc();
+                List<Token> params = parameters_opc();
                 match(TipoToken.RIGHT_PAREN);
-                block();
-                break;
+                Statement block = block();
+                return new StmtFunction(name, params, block);
         }
+        return null;
     }
 
-    private void parameters_opc() throws ParserException {
+    private List<Token> parameters_opc() throws ParserException {
+        List<Token> tokens = new ArrayList<>();
         switch (tabla.BuscarEnTabla(39, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 38);
             case 1:
-                parameters();
+                tokens.addAll(parameters());
                 break;
             case 2:
                 break;
         }
+        return tokens;
     }
 
-    private void parameters() throws ParserException {
+    private List<Token> parameters() throws ParserException {
+        List<Token> tokens = new ArrayList<>();
         switch (tabla.BuscarEnTabla(40, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 39);
             case 1:
                 match(TipoToken.IDENTIFIER);
-                parameters_2();
-                break;
+                tokens.add(previous());
+                tokens.addAll(parameters_2());
+                return tokens;
         }
+        return tokens;
     }
 
-    private void parameters_2() throws ParserException {
+    private List<Token> parameters_2() throws ParserException {
+        List<Token> tokens = new ArrayList<>();
         switch (tabla.BuscarEnTabla(41, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 41);
             case 1:
                 match(TipoToken.COMMA);
                 match(TipoToken.IDENTIFIER);
-                parameters_2();
-                break;
+                tokens.add(previous());
+                tokens.addAll(parameters_2());
+                return tokens;
             case 2:
                 break;
         }
+        return tokens;
     }
 
-    private void arguments_opc() throws ParserException {
+    private List<Expression> arguments_opc() throws ParserException {
+        List<Expression> exprs = new ArrayList<>();
         switch (tabla.BuscarEnTabla(42, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 42);
             case 1:
-                expression();
-                arguments();
-                break;
+                exprs.add(expression());
+                exprs.addAll(arguments());
+                return exprs;
             case 2:
                 break;
         }
+        return exprs;
     }
 
-    private void arguments() throws ParserException {
+    private List<Expression> arguments() throws ParserException {
+        List<Expression> exprs = new ArrayList<>();
         switch (tabla.BuscarEnTabla(43, preanalisis)){
             case 0:
-                throw new ParserException(preanalisis);
+                throw new ParserException(preanalisis, 43);
             case 1:
                 match(TipoToken.COMMA);
-                expression();
-                arguments();
-                break;
+                exprs.add(expression());
+                exprs.addAll(arguments());
+                return exprs;
             case 2:
                 break;
         }
+        return exprs;
     }
 
 
